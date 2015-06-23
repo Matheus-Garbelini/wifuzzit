@@ -245,7 +245,7 @@ class group (base_primitive):
 
 ########################################################################################################################
 class random_data (base_primitive):
-    def __init__ (self, value, min_length, max_length, max_mutations=25, fuzzable=True, step=None, name=None):
+    def __init__ (self, value, min_length, max_length, max_mutations=25, fuzzable=True, step=None, heuristic=None, name=None):
         '''
         Generate a random chunk of data while maintaining a copy of the original. A random length range can be specified.
         For a static length, set min/max length to be the same.
@@ -262,6 +262,8 @@ class random_data (base_primitive):
         @param fuzzable:      (Optional, def=True) Enable/disable fuzzing of this primitive
         @type  step:          Integer
         @param step:          (Optional, def=None) If not null, step count between min and max reps, otherwise random
+        @type  heuristic:     Function
+        @param heuristic:     (Optional, def=None) Heuristic to compute a list of wanted random value length
         @type  name:          String
         @param name:          (Optional, def=None) Specifying a name gives you direct access to a primitive
         '''
@@ -273,14 +275,20 @@ class random_data (base_primitive):
         self.fuzzable      = fuzzable
         self.step          = step
         self.name          = name
-
+        self.heuristics    = None
+        
         self.s_type        = "random_data"  # for ease of object identification
         self.rendered      = ""             # rendered value
         self.fuzz_complete = False          # flag if this primitive has been completely fuzzed
         self.mutant_index  = 0              # current mutation number
 
+        assert not (step != 0 and heuristic), "Can't set step AND heuristic"
+
         if self.step:
             self.max_mutations = (self.max_length - self.min_length) / self.step + 1
+        elif heuristic:
+            self.heuristics = heuristic(self.min_length, self.max_length)
+            self.max_mutations = len(self.heuristics)
 
 
     def mutate (self):
@@ -300,8 +308,11 @@ class random_data (base_primitive):
             self.value = self.original_value
             return False
 
+        # select a length in the heuristics list
+        if self.heuristics:
+            length = self.heuristics[self.mutant_index]
         # select a random length for this string.
-        if not self.step:
+        elif not self.step:
             length = random.randint(self.min_length, self.max_length)
         # select a length function of the mutant index and the step.
         else:

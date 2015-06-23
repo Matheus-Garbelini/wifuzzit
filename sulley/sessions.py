@@ -111,10 +111,11 @@ class connection (pgraph.edge.edge):
 
 ########################################################################################################################
 class session (pgraph.graph):
+    # def __init__ (self, session_filename=None, skip=0, repeat_time=0, repeat_number=0, sleep_time=1.0, log_level=2, proto="tcp", bind=None, restart_interval=0, timeout=5.0, web_port=26000, crash_threshold=3, restart_sleep_time=300):
     def __init__(
                   self,
                   session_filename=None,
-                  skip=0,
+                  skip=0,repeat_time=0, repeat_number=0,
                   sleep_time=1.0,
                   log_level=logging.INFO,
                   logfile=None,
@@ -134,6 +135,11 @@ class session (pgraph.graph):
         @kwarg session_filename:   (Optional, def=None) Filename to serialize persistant data to
         @type  skip:               Integer
         @kwarg skip:               (Optional, def=0) Number of test cases to skip
+        @type  repeat_time:        Integer
+        @kwarg repeat_time:        (Optional, def=0) Repeat duration of the test case (in seconds)
+        @type  repeat_number:      Integer
+        @kwarg repeat_number:      (Optional, def=0) Repeat number of the test case
+        @type  sleep_time:         Float
         @type  sleep_time:         Float
         @kwarg sleep_time:         (Optional, def=1.0) Time to sleep in between tests
         @type  log_level:          Integer
@@ -143,7 +149,7 @@ class session (pgraph.graph):
         @type  logfile_level:      Integer
         @kwarg logfile_level:      (Optional, def=logger.INFO) Set the log level for the logfile
         @type  proto:              String
-        @kwarg proto:              (Optional, def="tcp") Communication protocol ("tcp", "udp", "ssl")
+        @kwarg proto:              (Optional, def="tcp") Communication protocol ("tcp", "udp", "ssl", "wifi")
         @type  bind:               Tuple (host, port)
         @kwarg bind:               (Optional, def=random) Socket bind address and port
         @type  timeout:            Float
@@ -163,10 +169,14 @@ class session (pgraph.graph):
 
         self.session_filename    = session_filename
         self.skip                = skip
+        self.repeat_time         = repeat_time
+        self.repeat_number       = repeat_number
         self.sleep_time          = sleep_time
         self.proto               = proto.lower()
         self.bind                = bind
         self.ssl                 = False
+        self.wifi                = False
+        self.wifi_iface          = False
         self.restart_interval    = restart_interval
         self.timeout             = timeout
         self.web_port            = web_port
@@ -208,6 +218,10 @@ class session (pgraph.graph):
 
         elif self.proto == "udp":
             self.proto = socket.SOCK_DGRAM
+
+        elif self.proto == "wifi":
+            self.proto = socket.SOCK_RAW
+            self.wifi  = True
 
         else:
             raise sex.SullyRuntimeError("INVALID PROTOCOL SPECIFIED: %s" % self.proto)
@@ -459,28 +473,44 @@ class session (pgraph.graph):
                                 error_handler(e, "failed on netmon.pre_send()", target)
                                 continue
 
-                        try:
-                            # establish a connection to the target.
-                            sock = socket.socket(socket.AF_INET, self.proto)
-                        except Exception, e:
-                            error_handler(e, "failed creating socket", target)
-                            continue
-
-                        if self.bind:
+                        if self.proto == socket.SOCK_STREAM or self.proto == socket.SOCK_DGRAM:
                             try:
-                                sock.bind(self.bind)
+                                # establish a connection to the target.
+                                sock = socket.socket(socket.AF_INET, self.proto)
                             except Exception, e:
-                                error_handler(e, "failed binding on socket", target, sock)
+                                error_handler(e, "failed creating socket", target)
                                 continue
 
-                        try:
-                            sock.settimeout(self.timeout)
+                            if self.bind:
+                                try:
+                                    sock.bind(self.bind)
+                                except Exception, e:
+                                    error_handler(e, "failed binding on socket", target, sock)
+                                    continue
+
+                            try:
+                                sock.settimeout(self.timeout)
+                                sock.connect((target.host, target.port))
+                            except Exception, e:
+                                error_handler(e, "failed connecting on socket", target, sock)
+                                continue
+                                
+                        elif self.wifi and self.wifi_iface:
+                            ETH_P_ALL = 3
+                            try:
+                                sock = socket.socket(socket.AF_PACKET, self.proto, socket.htons(ETH_P_ALL))
+                            except Exception, e:
+                                error_handler(e, "failed creating socket", target)
+                            try:
+                                sock.bind((self.wifi_iface, ETH_P_ALL))
+                            except Exception, e:
+                                error_handler(e, "failed binding on socket", target, sock)
                             # Connect is needed only for TCP stream
                             if self.proto == socket.SOCK_STREAM:
                                 sock.connect((target.host, target.port))
-                        except Exception, e:
-                            error_handler(e, "failed connecting on socket", target, sock)
-                            continue
+                        # except Exception, e:
+                        #     error_handler(e, "failed connecting on socket", target, sock)
+                        #     continue
 
                         # if SSL is requested, then enable it.
                         if self.ssl:
@@ -508,11 +538,21 @@ class session (pgraph.graph):
                             continue
 
                         # now send the current node we are fuzzing.
-                        try:
-                            self.transmit(sock, self.fuzz_node, edge, target)
-                        except Exception, e:
-                            error_handler(e, "failed transmitting fuzz node", target, sock)
-                            continue
+                        if self.repeat_time:
+                            start_time = time.time()
+                            try:
+                                while (time.time() - start_time) < self.repeat_time:
+                                    self.transmit(sock, self.fuzz_node, edge, target)
+                            except Exception, e:
+                                error_handler(e, "failed transmitting fuzz node", target, sock)
+                                continue
+                        else:
+                            for i in xrange(self.repeat_number + 1):
+                                try:
+                                    self.transmit(sock, self.fuzz_node, edge, target)
+                                except Exception, e:
+                                    error_handler(e, "failed transmitting fuzz node", target, sock)
+                                    continue
 
                         # if we reach this point the send was successful for break out of the while(1).
                         break

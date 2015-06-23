@@ -1,7 +1,7 @@
 # Define variables
 # SETTINGS is [ (AP_NUMBER, SAVE_RESULTS, SKIP) ]
 
-TEST_SETTINGS_INDEX = 3
+TEST_SETTINGS_INDEX = 0
 
 SETTINGS = [
             (0, 0, 0),
@@ -10,8 +10,9 @@ SETTINGS = [
 # Defining the fuzzing MAC address device
 STA_MAC = "00:20:A6:61:2D:09"
 
-# Defining the injection interface
-IFACE   = "ath0"
+# Defining the injection/monitor interface
+# Use airmon-ng
+IFACE   = "wlp0s20u1mon"
 
 ##### BELOW VARIABLES SHOULD NOT BE TWEAKED BY THE USER
 

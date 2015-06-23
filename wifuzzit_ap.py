@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
-from sulley import *
+from sulley import sessions, instrumentation
 from ap_requests import *
 from optparse import OptionParser
 
@@ -11,7 +11,7 @@ import time
 
 # Assume that wireless card is in monitor mode on appropriate channel
 # Saves from lot of dependencies (lorcon, pylorcon...)
-
+# TODO: Add airmon.py
 ###############
 
 def fuzz_ap():
@@ -180,10 +180,10 @@ def fuzz_ap():
 
 
     # Defining the transport protocol
-    sess    = sessions.session(session_filename=FNAME, proto="wifi", timeout=5.0, sleep_time=0.1, log_level=LOG_LEVEL, skip=SKIP, crash_threshold=CRASH_THRESHOLD)
+    sess = sessions.session(session_filename=FNAME, proto="wifi", timeout=5.0, sleep_time=0.1, log_level=LOG_LEVEL, skip=SKIP, crash_threshold=CRASH_THRESHOLD)
 
     # Defining the target
-    target  = sessions.target(AP_MAC, 0)
+    target = sessions.target(AP_MAC, 0)
 
     # Adding the detect_crash function for target monitoring
     target.procmon = instrumentation.external(post=is_alive)
@@ -282,7 +282,7 @@ if __name__ == '__main__':
         parser.error('AP incorrect configuration')
     if options.save:
         if options.fname:
-            FNAME = fname
+            FNAME = options.fname
         else:
             FNAME = 'audits/ap-%s-%s.session' % (options.ap_mac, options.ap_config)
     

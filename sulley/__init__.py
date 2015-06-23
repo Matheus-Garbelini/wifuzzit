@@ -7,15 +7,15 @@ import sulley.sex
 import sulley.sessions
 import sulley.utils
 
-BIG_ENDIAN      = ">"
-LITTLE_ENDIAN   = "<"
+BIG_ENDIAN = ">"
+LITTLE_ENDIAN = "<"
 
 
 ########################################################################################################################
 ### REQUEST MANAGEMENT
 ########################################################################################################################
 
-def s_get (name=None):
+def s_get(name=None):
     '''
     Return the request with the specified name or the current request if name is not specified. Use this to switch from
     global function style request manipulation to direct object manipulation. Example::
@@ -44,7 +44,7 @@ def s_get (name=None):
     return blocks.REQUESTS[name]
 
 
-def s_initialize (name):
+def s_initialize(name):
     '''
     Initialize a new block request. All blocks / primitives generated after this call apply to the named request.
     Use s_switch() to jump between factories.
@@ -57,50 +57,50 @@ def s_initialize (name):
         raise sex.SullyRuntimeError("blocks.REQUESTS ALREADY EXISTS: %s" % name)
 
     blocks.REQUESTS[name] = blocks.request(name)
-    blocks.CURRENT        = blocks.REQUESTS[name]
+    blocks.CURRENT = blocks.REQUESTS[name]
 
 
 def s_mutate ():
-    '''
+    """
     Mutate the current request and return False if mutations are exhausted, in which case the request has been reverted
     back to its normal form.
 
     @rtype:  Boolean
     @return: True on mutation success, False if mutations exhausted.
-    '''
+    """
 
     return blocks.CURRENT.mutate()
 
 
-def s_num_mutations ():
-    '''
+def s_num_mutations():
+    """
     Determine the number of repetitions we will be making.
 
     @rtype:  Integer
     @return: Number of mutated forms this primitive can take.
-    '''
+    """
 
     return blocks.CURRENT.num_mutations()
 
 
-def s_render ():
-    '''
+def s_render():
+    """
     Render out and return the entire contents of the current request.
 
     @rtype:  Raw
     @return: Rendered contents
-    '''
+    """
 
     return blocks.CURRENT.render()
 
 
-def s_switch (name):
-    '''
+def s_switch(name):
+    """
     Change the currect request to the one specified by "name".
 
     @type  name: String
     @param name: Name of request
-    '''
+    """
 
     if not blocks.REQUESTS.has_key(name):
         raise sex.SullyRuntimeError("blocks.REQUESTS NOT FOUND: %s" % name)
@@ -112,8 +112,8 @@ def s_switch (name):
 ### BLOCK MANAGEMENT
 ########################################################################################################################
 
-def s_block_start (name, group=None, encoder=None, dep=None, dep_value=None, dep_values=[], dep_compare="=="):
-    '''
+def s_block_start (name, group=None, encoder=None, dep=None, dep_value=None, dep_values=[], dep_compare="==", truncate=False):
+    """
     Open a new block under the current request. This routine always returns True so you can make your fuzzer pretty
     with indenting::
 
@@ -136,27 +136,29 @@ def s_block_start (name, group=None, encoder=None, dep=None, dep_value=None, dep
     @param dep_values:  (Optional, def=[]) Values that field "dep" may contain for block to be rendered
     @type  dep_compare: String
     @param dep_compare: (Optional, def="==") Comparison method to use on dependency (==, !=, >, >=, <, <=)
-    '''
+    @type  truncate:    Boolean
+    @param truncate:    (Optional, def=False) Enable/disable truncating of this block
+    """
 
-    block = blocks.block(name, blocks.CURRENT, group, encoder, dep, dep_value, dep_values, dep_compare)
+    block = blocks.block(name, blocks.CURRENT, group, encoder, dep, dep_value, dep_values, dep_compare, truncate)
     blocks.CURRENT.push(block)
 
     return True
 
 
-def s_block_end (name=None):
-    '''
+def s_block_end(name=None):
+    """
     Close the last opened block. Optionally specify the name of the block being closed (purely for aesthetic purposes).
 
     @type  name: String
     @param name: (Optional, def=None) Name of block to closed.
-    '''
+    """
 
     blocks.CURRENT.pop()
 
 
-def s_checksum (block_name, algorithm="crc32", length=0, endian="<", name=None):
-    '''
+def s_checksum(block_name, algorithm="crc32", length=0, endian="<", name=None):
+    """
     Create a checksum block bound to the block with the specified name. You *can not* create a checksum for any
     currently open blocks.
 
@@ -170,7 +172,7 @@ def s_checksum (block_name, algorithm="crc32", length=0, endian="<", name=None):
     @param endian:     (Optional, def=LITTLE_ENDIAN) Endianess of the bit field (LITTLE_ENDIAN: <, BIG_ENDIAN: >)
     @type  name:       String
     @param name:       Name of this checksum field
-    '''
+    """
 
     # you can't add a checksum for a block currently in the stack.
     if block_name in blocks.CURRENT.block_stack:
@@ -180,8 +182,8 @@ def s_checksum (block_name, algorithm="crc32", length=0, endian="<", name=None):
     blocks.CURRENT.push(checksum)
 
 
-def s_repeat (block_name, min_reps=0, max_reps=None, step=1, variable=None, fuzzable=True, name=None):
-    '''
+def s_repeat(block_name, min_reps=0, max_reps=None, step=1, variable=None, fuzzable=True, name=None):
+    """
     Repeat the rendered contents of the specified block cycling from min_reps to max_reps counting by step. By
     default renders to nothing. This block modifier is useful for fuzzing overflows in table entries. This block
     modifier MUST come after the block it is being applied to.
@@ -202,14 +204,14 @@ def s_repeat (block_name, min_reps=0, max_reps=None, step=1, variable=None, fuzz
     @param fuzzable:   (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  name:       String
     @param name:       (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     repeat = blocks.repeat(block_name, blocks.CURRENT, min_reps, max_reps, step, variable, fuzzable, name)
     blocks.CURRENT.push(repeat)
 
 
-def s_size (block_name, offset=0, length=4, endian="<", format="binary", inclusive=False, signed=False, math=None, fuzzable=False, name=None):
-    '''
+def s_size(block_name, offset=0, length=4, endian="<", format="binary", inclusive=False, signed=False, math=None, fuzzable=False, name=None):
+    """
     Create a sizer block bound to the block with the specified name. You *can not* create a sizer for any
     currently open blocks.
 
@@ -235,7 +237,7 @@ def s_size (block_name, offset=0, length=4, endian="<", format="binary", inclusi
     @param fuzzable:   (Optional, def=False) Enable/disable fuzzing of this sizer
     @type  name:       String
     @param name:       Name of this sizer field
-    '''
+    """
 
     # you can't add a size for a block currently in the stack.
     if block_name in blocks.CURRENT.block_stack:
@@ -245,15 +247,15 @@ def s_size (block_name, offset=0, length=4, endian="<", format="binary", inclusi
     blocks.CURRENT.push(size)
 
 
-def s_update (name, value):
-    '''
+def s_update(name, value):
+    """
     Update the value of the named primitive in the currently open request.
 
     @type  name:  String
     @param name:  Name of object whose value we wish to update
     @type  value: Mixed
     @param value: Updated value
-    '''
+    """
 
     if not blocks.CURRENT.names.has_key(name):
         raise sex.SullyRuntimeError("NO OBJECT WITH NAME '%s' FOUND IN CURRENT REQUEST" % name)
@@ -265,15 +267,15 @@ def s_update (name, value):
 ### PRIMITIVES
 ########################################################################################################################
 
-def s_binary (value, name=None):
-    '''
+def s_binary(value, name=None):
+    """
     Parse a variable format binary string into a static value and push it onto the current block stack.
 
     @type  value: String
     @param value: Variable format binary string
     @type  name:  String
     @param name:  (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     # parse the binary string into.
     parsed = value
@@ -287,7 +289,7 @@ def s_binary (value, name=None):
 
     value = ""
     while parsed:
-        pair   = parsed[:2]
+        pair = parsed[:2]
         parsed = parsed[2:]
 
         value += chr(int(pair, 16))
@@ -296,8 +298,8 @@ def s_binary (value, name=None):
     blocks.CURRENT.push(static)
 
 
-def s_delim (value, fuzzable=True, name=None):
-    '''
+def s_delim(value, fuzzable=True, name=None):
+    """
     Push a delimiter onto the current block stack.
 
     @type  value:    Character
@@ -306,14 +308,14 @@ def s_delim (value, fuzzable=True, name=None):
     @param fuzzable: (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  name:     String
     @param name:     (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     delim = primitives.delim(value, fuzzable, name)
     blocks.CURRENT.push(delim)
 
 
-def s_group (name, values):
-    '''
+def s_group(name, values):
+    """
     This primitive represents a list of static values, stepping through each one on mutation. You can tie a block
     to a group primitive to specify that the block should cycle through all possible mutations for *each* value
     within the group. The group primitive is useful for example for representing a list of valid opcodes.
@@ -322,16 +324,16 @@ def s_group (name, values):
     @param name:   Name of group
     @type  values: List or raw data
     @param values: List of possible raw values this group can take.
-    '''
+    """
 
     group = primitives.group(name, values)
     blocks.CURRENT.push(group)
 
 
 def s_lego (lego_type, value=None, options={}):
-    '''
+    """
     Legos are pre-built blocks... TODO: finish this doc
-    '''
+    """
 
     # as legos are blocks they must have a name.
     # generate a unique name for this lego.
@@ -347,8 +349,8 @@ def s_lego (lego_type, value=None, options={}):
     blocks.CURRENT.pop()
 
 
-def s_random (value, min_length, max_length, num_mutations=25, fuzzable=True, step=None, name=None):
-    '''
+def s_random(value, min_length, max_length, num_mutations=25, fuzzable=True, step=None, heuristic=None, name=None):
+    """
     Generate a random chunk of data while maintaining a copy of the original. A random length range can be specified.
     For a static length, set min/max length to be the same.
 
@@ -364,16 +366,18 @@ def s_random (value, min_length, max_length, num_mutations=25, fuzzable=True, st
     @param fuzzable:      (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  step:          Integer
     @param step:          (Optional, def=None) If not null, step count between min and max reps, otherwise random
+    @param heuristic:     (Optional, def=None) Heuristic to compute a list of wanted random value length
+    @type  name:          String
     @type  name:          String
     @param name:          (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
-    random = primitives.random_data(value, min_length, max_length, num_mutations, fuzzable, step, name)
+    random = primitives.random_data(value, min_length, max_length, num_mutations, fuzzable, step, heuristic, name)
     blocks.CURRENT.push(random)
 
 
-def s_static (value, name=None):
-    '''
+def s_static(value, name=None):
+    """
     Push a static value onto the current block stack.
 
     @see: Aliases: s_dunno(), s_raw(), s_unknown()
@@ -382,14 +386,14 @@ def s_static (value, name=None):
     @param value: Raw static data
     @type  name:  String
     @param name:  (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     static = primitives.static(value, name)
     blocks.CURRENT.push(static)
 
 
-def s_string (value, size=-1, padding="\x00", encoding="ascii", fuzzable=True, max_len=0, name=None):
-    '''
+def s_string(value, size=-1, padding="\x00", encoding="ascii", fuzzable=True, max_len=0, name=None):
+    """
     Push a string onto the current block stack.
 
     @type  value:    String
@@ -406,14 +410,14 @@ def s_string (value, size=-1, padding="\x00", encoding="ascii", fuzzable=True, m
     @param max_len:  (Optional, def=0) Maximum string length
     @type  name:     String
     @param name:     (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     s = primitives.string(value, size, padding, encoding, fuzzable, max_len, name)
     blocks.CURRENT.push(s)
 
 
-def s_bit_field (value, width, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
-    '''
+def s_bit_field(value, width, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
+    """
     Push a variable length bit field onto the current block stack.
 
     @see: Aliases: s_bit(), s_bits()
@@ -434,14 +438,14 @@ def s_bit_field (value, width, endian="<", format="binary", signed=False, full_r
     @param fuzzable:   (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  name:       String
     @param name:       (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     bit_field = primitives.bit_field(value, width, None, endian, format, signed, full_range, fuzzable, name)
     blocks.CURRENT.push(bit_field)
 
 
-def s_byte (value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
-    '''
+def s_byte(value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
+    """
     Push a byte onto the current block stack.
 
     @see: Aliases: s_char()
@@ -460,14 +464,14 @@ def s_byte (value, endian="<", format="binary", signed=False, full_range=False, 
     @param fuzzable:   (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  name:       String
     @param name:       (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     byte = primitives.byte(value, endian, format, signed, full_range, fuzzable, name)
     blocks.CURRENT.push(byte)
 
 
-def s_word (value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
-    '''
+def s_word(value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
+    """
     Push a word onto the current block stack.
 
     @see: Aliases: s_short()
@@ -486,14 +490,14 @@ def s_word (value, endian="<", format="binary", signed=False, full_range=False, 
     @param fuzzable:   (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  name:       String
     @param name:       (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     word = primitives.word(value, endian, format, signed, full_range, fuzzable, name)
     blocks.CURRENT.push(word)
 
 
-def s_dword (value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
-    '''
+def s_dword(value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
+    """
     Push a double word onto the current block stack.
 
     @see: Aliases: s_long(), s_int()
@@ -512,13 +516,13 @@ def s_dword (value, endian="<", format="binary", signed=False, full_range=False,
     @param fuzzable:   (Optional, def=True) Enable/disable fuzzing of this primitive
     @type  name:       String
     @param name:       (Optional, def=None) Specifying a name gives you direct access to a primitive
-    '''
+    """
 
     dword = primitives.dword(value, endian, format, signed, full_range, fuzzable, name)
     blocks.CURRENT.push(dword)
 
 
-def s_qword (value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
+def s_qword(value, endian="<", format="binary", signed=False, full_range=False, fuzzable=True, name=None):
     '''
     Push a quad word onto the current block stack.
 

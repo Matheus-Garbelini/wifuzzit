@@ -76,7 +76,12 @@ class request (pgraph.node):
         if not self.block_stack:
             raise sex.SullyRuntimeError("BLOCK STACK OUT OF SYNC")
 
-        self.block_stack.pop()
+        b = self.block_stack.pop()
+        
+        # if block truncate parameter is True, initialize some variable
+        # we have to do this here, because all items of the block must be on the stack
+        if b.truncate:
+            b.init_truncate()
 
 
     def push (self, item):
@@ -183,7 +188,7 @@ class request (pgraph.node):
 
 ########################################################################################################################
 class block:
-    def __init__ (self, name, request, group=None, encoder=None, dep=None, dep_value=None, dep_values=[], dep_compare="=="):
+    def __init__ (self, name, request, group=None, encoder=None, dep=None, dep_value=None, dep_values=[], dep_compare="==", truncate=False):
         '''
         The basic building block. Can contain primitives, sizers, checksums or other blocks.
 
@@ -203,6 +208,8 @@ class block:
         @param dep_values:  (Optional, def=[]) Values that field "dep" may contain for block to be rendered
         @type  dep_compare: String
         @param dep_compare: (Optional, def="==") Comparison method to apply to dependency (==, !=, >, >=, <, <=)
+        @type  truncate:    Boolean
+        @param truncate:    (Optional, def=False) Enable/disable truncating of this block        
         '''
 
         self.name          = name
@@ -213,6 +220,7 @@ class block:
         self.dep_value     = dep_value
         self.dep_values    = dep_values
         self.dep_compare   = dep_compare
+        self.truncate      = truncate
 
         self.stack         = []     # block item stack.
         self.rendered      = ""     # rendered block contents.
@@ -220,7 +228,22 @@ class block:
         self.group_idx     = 0      # if this block is tied to a group, the index within that group.
         self.fuzz_complete = False  # whether or not we are done fuzzing this block.
         self.mutant_index  = 0      # current mutation index.
+        
+        if self.truncate:
+            self.truncate_size     = 0      # not mutated block size
+            self.truncate_rendered = None   # not mutated block
+            self.truncate_complete = False  # whether or not we are done truncating this block
 
+
+    def init_truncate (self):
+        '''
+        Initialize self.truncate_rendered, must be done after all items are pushed on the stack
+        '''
+        
+        self.truncate = False
+        self.render()
+        self.truncate = True
+        self.truncate_rendered = self.rendered
 
     def mutate (self):
         mutated = False
@@ -228,6 +251,15 @@ class block:
         # are we done with this block?
         if self.fuzz_complete:
             return False
+            
+        if self.truncate and not self.truncate_complete:
+            if self.truncate_size == len(self.truncate_rendered):
+                self.truncate_complete = True
+            else:
+                self.request.mutant = self
+                self.truncate_size += 1
+                item = self
+                mutated = True
 
         #
         # mutate every item on the stack for every possible group value.
@@ -339,6 +371,9 @@ class block:
         # if this block is associated with a group, then multiply out the number of possible mutations.
         if self.group:
             num_mutations *= len(self.request.names[self.group].values)
+            
+        if self.truncate:
+            num_mutations += len(self.truncate_rendered)
 
         return num_mutations
 
@@ -421,6 +456,10 @@ class block:
             for item in self.request.callbacks[self.name]:
                 item.render()
 
+        # the block is truncated (only if the block started to be mutate).
+        if self.truncate and not self.truncate_complete and self.truncate_size > 0:
+            self.rendered = self.rendered[0:self.truncate_size-1]
+            
 
     def reset (self):
         '''
@@ -429,6 +468,9 @@ class block:
 
         self.fuzz_complete = False
         self.group_idx     = 0
+        
+        self.truncate_complete = False
+        self.truncate_size     = 0
 
         for item in self.stack:
             if item.fuzzable:
