@@ -30,11 +30,11 @@ Settings and command-line options are quite straightforward.
 
 # Monitor mode
 
-Setting the monitor mode and appropriate channel is left to wifuzzit's user. Wifuzzit should be fully functional on any wireless card with injection capabilities but wifuzzit was only tested with Atheros chipsets (such as the AR5212) and madwifi drivers. You have to set up wireless monitor mode without any preamble headers (radiotap, prism or any other).
+Setting the monitor mode and appropriate channel is left to wifuzzit's user. Wifuzzit should be fully functional on any wireless card with injection capabilities but wifuzzit.
 
-For madwifi drivers, this could be set thanks to:
+If using Aircrack-ng tools:
 
-`sysctl -w net.ath0.dev_type=801`
+`sudo airmon-ng start wlan0`
 
 # STA fuzzing: instrumentation
 

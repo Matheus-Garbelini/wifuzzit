@@ -13,6 +13,8 @@ ERP42   = "\x04"
 ERP47   = "\x00"
 XRATES  = "\x32\x04\x30\x48\x60\x6c"
 
+RADIO_TAP = "\x00\x00\x08\x00\x00\x00\x00\x00"
+
 PROBE_RESP  = "\x50"
 PROBE_RESP += "\x00"
 PROBE_RESP += "\x3A\x01"

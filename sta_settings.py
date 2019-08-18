@@ -4,15 +4,15 @@
 TEST_SETTINGS_INDEX = 1
 
 SETTINGS = [
-            (0, 0, 0),
-            (1, 0, 0),
+            (0, 1, 0),
+            (1, 1, 0),
             ]
 
 # Defining the fuzzing MAC address device
-AP_MAC  = "00:20:A6:61:2D:09"
+AP_MAC  = "28:c6:3f:a8:af:c5"
 
 # Defining the injection interface
-IFACE   = "ath0"
+IFACE   = "wlan1"
 
 ##### BELOW VARIABLES SHOULD NOT BE TWEAKED BY THE USER
 
@@ -22,8 +22,8 @@ SKIP = SETTINGS[TEST_SETTINGS_INDEX][2]
 
 # Defining fuzzing specific variables
 STA = [
-        ("00:00:00:00:00:00", 1),   # ipw3945 Linux
-        ('18:34:51:54:c5:c9', 1),
+        ("94:65:2d:ed:34:20", 1),   # ipw3945 Linux
+        ('94:65:2d:ed:34:20', 1),
         ][STA_NUMBER]
 
 STA_MAC = STA[0]
@@ -45,5 +45,5 @@ PADDING = "A"
 TRUNCATE = True
 
 # Defining fuzzing specific variables
-SSID    = "fuzzing"
+SSID    = "TEST_KRA"
 CHANNEL = "\x01"                # Channel should be the same that real one

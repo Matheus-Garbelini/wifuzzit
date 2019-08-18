@@ -6,14 +6,32 @@ from sta_requests import *
 import socket
 import time
 import struct
+from scapy.sendrecv import sendp
+from scapy.config import conf
+conf.verb = 0
+conf.iface = IFACE
 
 # Assume that wireless card is in monitor mode on appropriate channel
 # Saves from lot of dependencies (lorcon, pylorcon...)
+
+def recv_wifi(sock, bytes_number):
+    ans = sock.recv(bytes_number)
+    if ans:
+        p_len = ord(ans[2])
+        p_len = p_len | (ord(ans[3])<<8)
+        return ans[p_len:]
+    return None
+
+def send_wifi(sock, data):
+    global IFACE
+    data = RADIO_TAP + data
+    sendp(data, iface= IFACE)
 
 def listen(s):
     """
     Returns whenever STA active scanning is detected.
     """
+    print('listen')
     global STA_MAC
 
     def isscan(pkt):
@@ -24,14 +42,14 @@ def listen(s):
 
     sess.log("waiting for active scanning from %s" % STA_MAC)
     while True:
-        ans = s.recv(1024)
+        ans = recv_wifi(s, 1024)
         answered = isscan(ans)
         if answered:
             sess.log("active scanning detected from %s" % STA_MAC)
             return True
 
 def is_alive():
-
+    print('is_alive')
     global IFACE
     ETH_P_ALL = 3
 
@@ -49,7 +67,7 @@ def is_alive():
     start_time = time.time()
 
     while (time.time() - start_time < LISTEN_TIME):
-        ans = s.recv(1024)
+        ans = recv_wifi(s,1024)
         if isscan(ans):
             alive = True
             break
@@ -57,7 +75,7 @@ def is_alive():
     return alive
 
 # Defining the transport protocol
-sess    = sessions.session(session_filename=FNAME, proto="wifi", repeat_time=REPEAT_TIME, timeout=5.0, sleep_time=0, skip=SKIP)
+sess    = sessions.session(session_filename=FNAME, proto="wifi", repeat_time=REPEAT_TIME, timeout=5.0, sleep_time=0, skip=SKIP, web_port=26003)
 
 # Defining the target
 target  = sessions.target(STA_MAC, 0)
