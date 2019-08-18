@@ -20,9 +20,7 @@ This fuzzer and its previous generations were able to discover loads of vulnerab
 
 # Requirements and configuration
 
-As wifuzzit relies on [Sulley](https://github.com/OpenRCE/sulley), you have to set up `PYTHONPATH` appropriately to include [Sulley].
-
-You also have to patch Sulley with provided patches.
+WiFuzz requires Scapy v2.4.3. Scapy from branch [#ca341e287e](https://github.com/secdev/scapy/tree/ca341e287e49e410a6348bebb6852e28d68ceab8) is working fine.
 
 Two options to operate fuzzing:
 * use `fuzz_ap.py` or `fuzz_sta.py` respectively with `ap_settings.py` and `sta_settings.py` configuration files ;
