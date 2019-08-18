@@ -6,9 +6,25 @@ from ap_requests import *
 import socket
 import time
 import struct
+from scapy.sendrecv import sendp
+from scapy.config import conf
+conf.verb = 0
+conf.iface = IFACE
 
 # Assume that wireless card is in monitor mode on appropriate channel
 # Saves from lot of dependencies (lorcon, pylorcon...)
+def recv_wifi(sock, bytes_number):
+    ans = sock.recv(bytes_number)
+    if ans:
+        p_len = ord(ans[2])
+        p_len = p_len | (ord(ans[3])<<8)
+        return ans[p_len:]
+    return None
+
+def send_wifi(sock, data):
+    global IFACE
+    data = RADIO_TAP + data
+    sendp(data, iface= IFACE)
 
 def is_alive():
 
@@ -33,14 +49,14 @@ def is_alive():
 
     while retries:
 
-        s.send(AUTH_REQ_OPEN)
+        send_wifi(s, AUTH_REQ_OPEN)
 
         start_time = time.time()
         while (time.time() - start_time) < 1:
-            ans = s.recv(1024)
+            ans = recv_wifi(s,1024)
             alive = isresp(ans)
-            if alive:
-                s.send(DEAUTH)
+            if alive:                
+                send_wifi(s, DEAUTH)
                 s.close()
                 if retries != CRASH_RETRIES:
                     sess.log("retried authentication %d times" % (CRASH_RETRIES - retries), level=1)
@@ -53,24 +69,25 @@ def is_alive():
     return alive
 
 def check_alive(s):
-
     global AUTH_REQ_OPEN
-
+    print('check_alive')
     def isresp(pkt):
+        # print('hex: ' + hexlify(pkt))
+        # sys.exit(0)
         resp = False
         if (len(pkt) >= 30 and pkt[0] == "\xB0"\
             and pkt[4:10] == mac2str(STA_MAC)\
             and pkt[28:30] == "\x00\x00"):
             resp = True
         return resp
-
     sess.log("checking aliveness of fuzzed access point %s" % AP_MAC, level=3)
 
     while True:
-        t = s.send(AUTH_REQ_OPEN)
+        t = send_wifi(s,AUTH_REQ_OPEN)
         start_time = time.time()
         while (time.time() - start_time) < 1:
-            alive = isresp(s.recv(1024))
+            ans = recv_wifi(s,1024)
+            alive = isresp(ans)
             if alive:
                 return alive
         sess.log("waiting for the access point to be up", level=1)
@@ -84,8 +101,9 @@ def pass_state(s):
 def clean_state(s):
 
     global DEAUTH
+    print('clean_state')
 
-    s.send(DEAUTH)
+    send_wifi(s, DEAUTH)
     sess.log("sending deauthentication to come back to initial state", level=3)
 
 # shameless ripped from scapy
@@ -107,9 +125,10 @@ def hexdump(x):
         i += 16
 
 def check_auth(session, node, edge, sock):
-
+    print('check_auth')
     def isresp(pkt):
         resp = False
+
         if (len(pkt) >= 30 and pkt[0] == "\xB0"\
             and pkt[4:10] == mac2str(STA_MAC)\
             and pkt[28:30] == "\x00\x00"):
@@ -118,7 +137,7 @@ def check_auth(session, node, edge, sock):
 
     start_time = time.time()
     while (time.time() - start_time) < STATE_WAIT_TIME:
-        pkt = sock.recv(1024)
+        pkt = recv_wifi(sock,1024)
         ans = isresp(pkt)
         if ans:
             sess.log("authentication successfull with %s" % AP_MAC, level=3)
@@ -151,7 +170,7 @@ def check_asso(session, node, edge, sock):
 
     start_time = time.time()
     while (time.time() - start_time) < STATE_WAIT_TIME:
-        pkt = sock.recv(1024)
+        pkt = recv_wifi(sock,1024)
         ans = isresp(pkt)
         if ans:
             sess.log("association successfull with %s" % AP_MAC, level=3)
@@ -174,7 +193,7 @@ def check_asso(session, node, edge, sock):
 ###############
 
 # Defining the transport protocol
-sess    = sessions.session(session_filename=FNAME, proto="wifi", timeout=5.0, sleep_time=0.1, log_level=LOG_LEVEL, skip=SKIP, crash_threshold=CRASH_THRESHOLD)
+sess = sessions.session(session_filename=FNAME, proto="wifi", timeout=5.0, sleep_time=0.1, log_level=LOG_LEVEL, skip=SKIP, crash_threshold=CRASH_THRESHOLD)
 
 # Defining the target
 target  = sessions.target(AP_MAC, 0)

@@ -8,11 +8,11 @@ SETTINGS = [
             ]
 
 # Defining the fuzzing MAC address device
-STA_MAC = "00:20:A6:61:2D:09"
+STA_MAC = "28:c6:3f:a8:af:c5"
 
 # Defining the injection/monitor interface
 # Use airmon-ng
-IFACE   = "wlp0s20u1mon"
+IFACE   = "wlan1mon"
 
 ##### BELOW VARIABLES SHOULD NOT BE TWEAKED BY THE USER
 
@@ -22,7 +22,7 @@ SKIP = SETTINGS[TEST_SETTINGS_INDEX][2]
 
 # Defining fuzzing specific variables
 AP = [
-        ('kikoo', '00:11:22:33:44:55', 11, 'WPA-PSK'),
+        ('esp8266', '24:0a:c4:9a:58:28', 1, 'WPA-PSK'),
         ][AP_NUMBER]
 
 SSID = AP[0]

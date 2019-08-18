@@ -16,7 +16,12 @@ import pedrpc
 import pgraph
 import sex
 import primitives
+from binascii import hexlify
+from scapy.sendrecv import sendp
 
+def sulley_send_wifi(sock, data):
+    data = '\x00\x00\x08\x00\x00\x00\x00\x00' + data
+    sendp(data)
 
 ########################################################################################################################
 class target:
@@ -186,6 +191,7 @@ class session (pgraph.graph):
         # Initialize logger
         self.logger = logging.getLogger("Sulley_logger")
         self.logger.setLevel(log_level)
+        #self.log = self.logger
         formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] -> %(message)s')
 
         if logfile != None:
@@ -237,6 +243,12 @@ class session (pgraph.graph):
         self.last_recv  = None
 
         self.add_node(self.root)
+
+    def log(self, text, level=None):
+        if level:
+            self.logger.setLevel(level)
+        self.logger.info(text)
+        pass
 
 
     ####################################################################################################################
@@ -311,7 +323,10 @@ class session (pgraph.graph):
         @rtype:  pgraph.edge
         @return: The edge between the src and dst.
         '''
-
+        # if dst:
+            # print(src.label, dst.label)
+        # else:
+            # print(src.label, None)
         # if only a source was provided, then make it the destination and set the source to the root node.
         if not dst:
             dst = src
@@ -878,13 +893,11 @@ class session (pgraph.graph):
         '''
 
         data = None
-
         # if the edge has a callback, process it. the callback has the option to render the node, modify it and return.
         if edge.callback:
             data = edge.callback(self, node, edge, sock)
-
         self.logger.info("xmitting: [%d.%d]" % (node.id, self.total_mutant_index))
-
+        
         # if no data was returned by the callback, render the node here.
         if not data:
             data = node.render()
@@ -904,11 +917,12 @@ class session (pgraph.graph):
                 self.logger.debug("Too much data for UDP, truncating to %d bytes" % MAX_UDP)
                 data = data[:MAX_UDP]
 
-        try:
+        try:           
             if self.proto == socket.SOCK_STREAM:
                 sock.send(data)
             else:
-                sock.sendto(data, (self.targets[0].host, self.targets[0].port))
+                sulley_send_wifi(sock, data)
+                # sock.sendto(data, (self.targets[0].host, self.targets[0].port))
             self.logger.debug("Packet sent : " + repr(data))
         except Exception, inst:
             self.logger.error("Socket error, send: %s" % inst)
